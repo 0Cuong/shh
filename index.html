@@ -7,7 +7,7 @@
   <meta property="og:title" content="Gửi Xnghi của ah ❤">
   <meta property="og:description" content="Sth i need talk to you">
   <meta property="og:type" content="website">
-  <meta property="og:image" https://raw.githubusercontent.com/sojijr/valentine-website/main/public/images/favicon.png">
+  <meta property="og:image" content="https://raw.githubusercontent.com/sojijr/valentine-website/main/public/images/favicon.png">
 
   <link rel="icon" href="./public/images/favicon.png">
   <title>Gửi Xnghi của ah ❤</title>
@@ -16,82 +16,76 @@
 </head>
 
 <body>
-
   <canvas id="starfield"></canvas>
 
   <iframe 
-  id="scPlayer"
-  style="position:fixed; width:0; height:0; border:0; opacity:0;"
-  allow="autoplay"
-  src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/xxkingad/ascension&auto_play=false&visual=false">
-</iframe>
+    id="scPlayer"
+    style="position:absolute; top:-1000px; width:100px; height:100px; opacity:0.01;"
+    allow="autoplay"
+    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/xxkingad/ascension&auto_play=false&visual=false">
+  </iframe>
 
-<script src="https://w.soundcloud.com/player/api.js"></script>
-<script src="./script.js" defer></script>
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+  <script src="./script.js" defer></script>
 
-<script>
-  const iframe = document.getElementById("scPlayer");
-  const widget = SC.Widget(iframe);
+  <script>
+    const iframe = document.getElementById("scPlayer");
+    const widget = SC.Widget(iframe);
 
-  let started = false;
-  let faded = false;
-  let isReady = false;
+    let started = false;
+    let isReady = false;
 
-  widget.bind(SC.Widget.Events.READY, () => {
-    isReady = true;
-  });
+    widget.bind(SC.Widget.Events.READY, () => {
+      isReady = true;
+    });
 
-  function startMusic() {
-    if (started || !isReady) return;
-    started = true;
-
-    widget.setVolume(0);
-    widget.play();
-
-    let volume = 0;
-    const targetVolume = 80;
-    
-    const fadeIn = setInterval(() => {
-      if (volume >= targetVolume) {
-        clearInterval(fadeIn);
-      } else {
-        volume += 2; 
-        widget.setVolume(volume);
+    function startMusic() {
+      if (started) return;
+      
+      if (!isReady) {
+        setTimeout(startMusic, 500);
+        return;
       }
-    }, 50);
-  }
 
-  widget.bind(SC.Widget.Events.PLAY_PROGRESS, (e) => {
-    if (!faded && e.currentPosition >= e.duration - 3000) {
-      faded = true;
+      started = true;
+      widget.setVolume(0);
+      widget.play();
 
-      let volume = 80;
-      const fadeOut = setInterval(() => {
-        if (volume <= 0) {
-          clearInterval(fadeOut);
-          widget.pause();
-          widget.seekTo(0);
+      let volume = 0;
+      const targetVolume = 85;
+      
+      const fadeIn = setInterval(() => {
+        if (volume >= targetVolume) {
+          clearInterval(fadeIn);
         } else {
-          volume -= 2;
+          volume += 5;
           widget.setVolume(volume);
         }
-      }, 50);
+      }, 100);
     }
-  });
 
-  widget.bind(SC.Widget.Events.FINISH, () => {
-    widget.pause();
-    widget.seekTo(0);
-    faded = false;
-    started = false;
-  });
+    document.addEventListener("click", startMusic);
+    document.addEventListener("touchstart", startMusic);
 
-  window.addEventListener("click", startMusic, { once: true });
-  window.addEventListener("touchstart", startMusic, { once: true });
+    widget.bind(SC.Widget.Events.PLAY_PROGRESS, (e) => {
+      if (e.currentPosition >= e.duration - 3000) {
+        let vol = 85;
+        const fadeOut = setInterval(() => {
+          if (vol <= 0) {
+            clearInterval(fadeOut);
+            widget.pause();
+          } else {
+            vol -= 5;
+            widget.setVolume(vol);
+          }
+        }, 100);
+      }
+    });
 
-  window.addEventListener("load", () => {
-    setTimeout(() => {
-      if(iframe) iframe.style.opacity = "0.01";
-    }, 100);
-  });
-</script>
+    widget.bind(SC.Widget.Events.FINISH, () => {
+      widget.seekTo(0);
+      started = false;
+    });
+  </script>
+</body>
+</html>
