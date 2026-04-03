@@ -49,11 +49,14 @@
     widget.play();
 
     let volume = 0;
+    const targetVolume = 80;
+    
     const fadeIn = setInterval(() => {
-      if (volume >= 25) {
+      if (volume >= targetVolume) {
         clearInterval(fadeIn);
       } else {
-        widget.setVolume(volume++);
+        volume += 2; 
+        widget.setVolume(volume);
       }
     }, 50);
   }
@@ -62,14 +65,15 @@
     if (!faded && e.currentPosition >= e.duration - 3000) {
       faded = true;
 
-      let volume = 65;
+      let volume = 80;
       const fadeOut = setInterval(() => {
         if (volume <= 0) {
           clearInterval(fadeOut);
           widget.pause();
           widget.seekTo(0);
         } else {
-          widget.setVolume(volume--);
+          volume -= 2;
+          widget.setVolume(volume);
         }
       }, 50);
     }
@@ -78,6 +82,8 @@
   widget.bind(SC.Widget.Events.FINISH, () => {
     widget.pause();
     widget.seekTo(0);
+    faded = false;
+    started = false;
   });
 
   window.addEventListener("click", startMusic, { once: true });
@@ -85,7 +91,7 @@
 
   window.addEventListener("load", () => {
     setTimeout(() => {
-      iframe.style.opacity = "0.01";
+      if(iframe) iframe.style.opacity = "0.01";
     }, 100);
   });
 </script>
