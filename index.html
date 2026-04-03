@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta property="og:title" content="Gửi Xnghi của ah ❤">
+  <meta property="og:description" content="Sth i need talk to you">
+  <meta property="og:type" content="website">
+  <meta property="og:image" https://raw.githubusercontent.com/sojijr/valentine-website/main/public/images/favicon.png">
+
+  <link rel="icon" href="./public/images/favicon.png">
+  <title>Gửi Xnghi của ah ❤</title>
+
+  <link rel="stylesheet" href="./public/style.css">
+</head>
+
+<body>
+
+  <canvas id="starfield"></canvas>
+
+  <iframe 
+  id="scPlayer"
+  style="position:fixed; width:0; height:0; border:0; opacity:0;"
+  allow="autoplay"
+  src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/xxkingad/ascension&auto_play=false&visual=false">
+</iframe>
+
+<script src="https://w.soundcloud.com/player/api.js"></script>
+<script src="./script.js" defer></script>
+
+<script>
+  const iframe = document.getElementById("scPlayer");
+  const widget = SC.Widget(iframe);
+
+  let started = false;
+  let faded = false;
+  let isReady = false;
+
+  widget.bind(SC.Widget.Events.READY, () => {
+    isReady = true;
+  });
+
+  function startMusic() {
+    if (started || !isReady) return;
+    started = true;
+
+    widget.setVolume(0);
+    widget.play();
+
+    let volume = 0;
+    const fadeIn = setInterval(() => {
+      if (volume >= 25) {
+        clearInterval(fadeIn);
+      } else {
+        widget.setVolume(volume++);
+      }
+    }, 50);
+  }
+
+  widget.bind(SC.Widget.Events.PLAY_PROGRESS, (e) => {
+    if (!faded && e.currentPosition >= e.duration - 3000) {
+      faded = true;
+
+      let volume = 25;
+      const fadeOut = setInterval(() => {
+        if (volume <= 0) {
+          clearInterval(fadeOut);
+          widget.pause();
+          widget.seekTo(0);
+        } else {
+          widget.setVolume(volume--);
+        }
+      }, 50);
+    }
+  });
+
+  widget.bind(SC.Widget.Events.FINISH, () => {
+    widget.pause();
+    widget.seekTo(0);
+  });
+
+  window.addEventListener("click", startMusic, { once: true });
+  window.addEventListener("touchstart", startMusic, { once: true });
+
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      iframe.style.opacity = "0.01";
+    }, 100);
+  });
+</script>
