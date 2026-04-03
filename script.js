@@ -32,7 +32,7 @@ const messages = [
 
   "Với anh, em luôn là điều đáng trân trọng nhất.",
 
-  "xnghi của anh luôn tự tin lên nhá Chayo.",
+  "xnghi của anh cố lên nhá Chayo.",
   "Gang Gang.",
   " Luv my wf "
 ];
