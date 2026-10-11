@@ -6,8 +6,14 @@ const STAR_COUNT = 400;
 const COLORS = [0, 60, 240];
 
 let frame = 0;
-const SPEED = 0.5;
-const DURATION = 320;
+const SPEED = 0.5;      // frame-units per 1/60s (same pace as before at 60Hz)
+const DURATION = 320;   // frame-units per message
+const OUTRO = 200;      // frame-units for the final fade to black
+const FONT = '"Comic Sans MS", "Comic Neue", cursive, sans-serif';
+
+let w = 0, h = 0, dpr = 1;
+let finished = false;
+let last = 0;
 
 const messages = [
   " hì hnay ko phải ngày đặc biệt gì hết nhma…",
@@ -38,11 +44,28 @@ const messages = [
 ];
 
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const oldW = w, oldH = h;
+  w = window.innerWidth;
+  h = window.innerHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // Buffer size = CSS size * DPR (sharp on retina), CSS size = exact viewport (no mobile 100vh mismatch)
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Keep stars where they were instead of re-rolling them on every resize
+  if (oldW && oldH) {
+    for (const s of stars) {
+      s.x *= w / oldW;
+      s.y *= h / oldH;
+    }
+  }
+
+  if (finished) paintBlack();
 }
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
 
 function rand(min, max) {
   return Math.random() * (max - min) + min;
@@ -51,30 +74,36 @@ function rand(min, max) {
 function createStars() {
   stars = [];
   for (let i = 0; i < STAR_COUNT; i++) {
+    const hue = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const sat = rand(50, 100);
     stars.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+      x: Math.random() * w,
+      y: Math.random() * h,
       r: Math.random() * 1.2,
-      hue: COLORS[Math.floor(Math.random() * COLORS.length)],
-      sat: rand(50, 100),
+      color: `hsla(${hue}, ${sat.toFixed(0)}%, 88%, `, // opacity appended at draw time
       o: Math.random()
     });
   }
 }
+
+resizeCanvas();
 createStars();
+window.addEventListener("resize", resizeCanvas);
 
 function drawStars() {
-  for (let s of stars) {
+  for (const s of stars) {
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${s.hue}, ${s.sat}%, 88%, ${s.o})`;
+    ctx.fillStyle = s.color + s.o.toFixed(2) + ")";
     ctx.fill();
   }
 }
 
-function updateStars() {
-  for (let s of stars) {
-    if (Math.random() > 0.99) s.o = Math.random();
+// dt in frame-units, so twinkle rate does not depend on the monitor refresh rate
+function updateStars(dt) {
+  const p = 0.01 * (dt / SPEED);
+  for (const s of stars) {
+    if (Math.random() < p) s.o = Math.random();
   }
 }
 
@@ -85,53 +114,61 @@ function easeInOut(t) {
 }
 
 function drawText() {
-  const fontSize = Math.min(30, window.innerWidth / 24);
-  const centerY = canvas.height / 2;
+  const index = Math.floor(frame / DURATION);
+  if (index >= messages.length) return;
 
-  ctx.font = `${fontSize}px Comic Sans MS`;
+  const local = (frame % DURATION) / DURATION;
+  const opacity = local < 0.5
+    ? easeInOut(local * 2)
+    : easeInOut(1 - (local - 0.5) * 2);
+
+  if (opacity < 0.01) return; // nothing visible: skip the expensive shadowBlur pass
+
+  ctx.font = `${Math.min(30, w / 24)}px ${FONT}`;
   ctx.textAlign = "center";
-
   ctx.shadowColor = "rgba(45,45,255,1)";
   ctx.shadowBlur = 12;
-
-  const index = Math.floor(frame / DURATION);
-  const local = (frame % DURATION) / DURATION;
-
-  let opacity = 0;
-
-  if (local < 0.5) {
-    opacity = easeInOut(local * 2);
-  } else {
-    opacity = easeInOut(1 - (local - 0.5) * 2);
-  }
-
-  if (index < messages.length) {
-    ctx.fillStyle = `rgba(45,45,255,${opacity})`;
-    ctx.fillText(messages[index], canvas.width / 2, centerY);
-  }
-
+  ctx.fillStyle = `rgba(45,45,255,${opacity})`;
+  ctx.fillText(messages[index], w / 2, h / 2);
   ctx.shadowBlur = 0;
+}
+
+function paintBlack() {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, w, h);
 }
 
 function drawOutroFade() {
   const totalFrames = messages.length * DURATION;
   if (frame > totalFrames) {
-    const fade = Math.min((frame - totalFrames) / 200, 1);
+    const fade = Math.min((frame - totalFrames) / OUTRO, 1);
     ctx.fillStyle = `rgba(0,0,0,${fade})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, w, h);
+    return fade >= 1;
   }
+  return false;
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(now) {
+  // Time-based animation; clamp so a background tab doesn't cause a huge jump
+  const dtMs = last ? Math.min(now - last, 100) : 1000 / 60;
+  last = now;
+  const dt = (dtMs / (1000 / 60)) * SPEED;
 
+  ctx.clearRect(0, 0, w, h);
   drawStars();
-  updateStars();
+  updateStars(dt);
   drawText();
-  drawOutroFade();
+  const done = drawOutroFade();
 
-  frame += SPEED;
+  frame += dt;
+
+  if (done) {
+    // Screen is fully black: stop the loop instead of burning CPU/battery forever
+    finished = true;
+    return;
+  }
   requestAnimationFrame(draw);
 }
 
-draw();
+requestAnimationFrame(draw);
